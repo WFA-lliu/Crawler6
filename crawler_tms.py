@@ -22,19 +22,22 @@ if __name__ == "__main__":
         metavar="event",
         default="",
         type=str,
-        help="Event number")
+        help="Event number",
+        required=True)
     my_parser.add_argument("-a",
         "--account",
         metavar="account",
         default="",
         type=str,
-        help="Account")
+        help="Account",
+        required=True)
     my_parser.add_argument("-p",
         "--password",
         metavar="password",
         default="",
         type=str,
-        help="Password")
+        help="Password",
+        required=True)
     my_parser.add_argument("-x",
         "--prefix",
         metavar="prefix",
@@ -47,6 +50,12 @@ if __name__ == "__main__":
         default="",
         type=str,
         help="Since the specified timestamp (in milliseconds)")
+    my_parser.add_argument("-n",
+        "--naming",
+        metavar="naming",
+        default="",
+        type=str,
+        help="The path of testbed naming file (i.e DisplayNames.txt)")
 
     args = my_parser.parse_args()
     if args.verbose == True :
@@ -54,6 +63,22 @@ if __name__ == "__main__":
     else:
         logging.basicConfig(level=logging.ERROR)
     logging.debug("args: " + repr(args))
+
+    naming: dict = {"ap": dict(), "sta": dict()}
+    if os.path.exists(args.naming) is True:
+        with open(args.naming) as f:
+            for line in f:
+                n = line.strip().split("!")
+                if len(n) == (3 + 1):
+                    matched_name_ap = re.findall(r"wfa_control_agent_(.*?)_ap", n[1])
+                    if matched_name_ap is not None and len(matched_name_ap) > 0:
+                        naming["ap"][n[2]] = matched_name_ap[0]
+                        continue
+                    matched_name_sta = re.findall(r"wfa_control_agent_(.*?)_sta", n[1])
+                    if matched_name_sta is not None and len(matched_name_sta) > 0:
+                        naming["sta"][n[2]] = matched_name_sta[0]
+                        continue
+    logging.debug(repr(naming))
 
     material: dict = dict()
     rst_expected: str = "Pass"
@@ -171,6 +196,7 @@ if __name__ == "__main__":
         logging.info("the downloaded count is %d" % (cnt_dl))
         logging.info("the omitted count is %d" % (cnt_omitted))
         logging.info("the quantity of results is %d" % (len(js4)))
+        #process; retrieve testbed names from the UCC log
         fn_patt6 = re.compile(r"(?!sniffer).*(\D\D\D)-[0-9]\.[0-9]*\.[0-9]*.*\.log")
         for tc in material:
             for idx, candidate in enumerate(material[tc]):
@@ -220,8 +246,32 @@ if __name__ == "__main__":
                 material[tc][idx]["ap"] = verdict["ap"]
                 material[tc][idx]["sta"] = verdict["sta"]
         logging.debug(repr(material))
+        #finalize; output report
+        DELI_OUTER: str = "; "
+        DELI_INNER: str = ","
+        DELI_ENCLOSED_LHS: str = "["
+        DELI_ENCLOSED_RHS: str = "]"
         for tc in material:
             for idx, candidate in enumerate(material[tc]):
-                print("%s, %s, %s, %s" % (tc, candidate["timestamp"], repr(candidate["ap"]), repr(candidate["sta"])))
+                rst: str = result["result"] + DELI_OUTER
+                rst += tc + DELI_OUTER
+                rst += ("%d" % (candidate["timestamp"])) + DELI_OUTER
+                ap: str = ""
+                ap += DELI_ENCLOSED_LHS
+                for i,c in enumerate(candidate["ap"]):
+                    if i > 0:
+                        ap += DELI_INNER
+                    ap += naming["ap"][c] if ("ap" in naming and c in naming["ap"]) else c
+                ap += DELI_ENCLOSED_RHS
+                rst += ap + DELI_OUTER
+                sta: str = ""
+                sta += DELI_ENCLOSED_LHS
+                for i,c in enumerate(candidate["sta"]):
+                    if i > 0:
+                        sta += DELI_INNER
+                    sta += naming["sta"][c] if ("sta" in naming and c in naming["sta"]) else c
+                sta += DELI_ENCLOSED_RHS
+                rst += sta + DELI_OUTER
+                print("%s" % (rst))
 
 #Crawler6 - by Leo Liu
