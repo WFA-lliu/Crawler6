@@ -201,18 +201,20 @@ if __name__ == "__main__":
         for tc in material:
             for idx, candidate in enumerate(material[tc]):
                 tmp_dir: str = os.path.dirname(candidate["path"])
-                tmp_fn: str = ""
+                tmp_fn: str = os.path.basename(candidate["path"])
+                ucc_log_path: str = ""
                 if zipfile.is_zipfile(candidate["path"]):
                     logging.debug("Archive format is %s; %s" % ("zip", candidate["path"]))
                     with zipfile.ZipFile(candidate["path"], "r") as archive:
                         allfiles = archive.namelist()
                         selected = [f for f in allfiles if fn_patt6.match(f)]
                         for fn in selected:
+                            archive.getinfo(fn).filename = tmp_fn + "-" + fn
                             archive.extract(member=fn, path=tmp_dir)
-                            tmp_fn = tmp_dir + os.path.sep + fn
+                            ucc_log_path = tmp_dir + os.path.sep + archive.getinfo(fn).filename
                 verdict: dict = {"core_ver": None, "elapsed": None, "result": None, "ap": list(), "sta": list()}
-                if os.path.exists(tmp_fn) is True:
-                    with open(tmp_fn) as f:
+                if os.path.exists(ucc_log_path) is True:
+                    with open(ucc_log_path) as f:
                         for line in f:
                             #one time check
                             if verdict["core_ver"] is None:
