@@ -39,6 +39,12 @@ if __name__ == "__main__":
         default="",
         type=str,
         help="Permitted prefix of test case")
+    my_parser.add_argument("-s",
+        "--since",
+        metavar="since",
+        default="",
+        type=str,
+        help="Since the specified timestamp (in milliseconds)")
 
     args = my_parser.parse_args()
     if args.verbose == True :
@@ -47,10 +53,12 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.ERROR)
     logging.debug("args: " + repr(args))
 
+    material: dict = dict()
     rst_expected: str = "Pass"
     cnt: int = 0
     cnt_dl: int = 0
     cnt_omitted: int = 0
+    cnt_exec: int = 0
     evaluation_dl_qty: int = 0
     term_early: bool = False
     cache_cover: bool = False
@@ -95,6 +103,7 @@ if __name__ == "__main__":
             cnt += 1
             logging.debug("id is %s" %(result["id"]))
             logging.debug("result is %s" %(result["result"]))
+            logging.debug("timestamp is %s" %(result["timestamp"]))
             logging.debug("log file name is %s" %(result["logFileName"]))
             if result["result"] == rst_expected:
                 username: str = os.path.basename(js3["ftpUserName"])
@@ -114,6 +123,10 @@ if __name__ == "__main__":
                     logging.debug("tc \"%s\" is omitted" %(rmt_path_tc))
                     cnt_omitted += 1
                     continue
+                if (len(args.since) > 0) and (int(args.since) > int(result["timestamp"])):
+                    logging.debug("the tc with ts \"%s\" is old enough to be omitted" %(result["timestamp"]))
+                    cnt_omitted += 1
+                    continue
                 lcl_dir: str = cached_directory + os.path.sep + rmt_path_dir
                 if os.path.exists(lcl_dir) is False:
                     os.makedirs(lcl_dir, mode = 0o777, exist_ok = True)
@@ -121,31 +134,39 @@ if __name__ == "__main__":
                 logging.debug("lcl_path is \"%s\"" %(lcl_path))
                 if os.path.exists(lcl_path) is True:
                     logging.info("lcl_path \"%s\" is existing" % (lcl_path))
-                    cnt_omitted += 1
-                    continue
-                #process; fetch log from FTP site
-                warnings.filterwarnings("ignore")
-                cnopts = pysftp.CnOpts()
-                cnopts.hostkeys = None
-                with pysftp.Connection(host=host, port=22, username=username, password=password, cnopts=cnopts) as conn5:
-                    logging.debug("connection established successfully")
-                    #process; check log existence on FTP site
-                    pwd5: str = conn5.pwd
-                    logging.debug("current working directory is: %s" % (pwd5))
-                    if conn5.exists(rmt_path) is False:
-                        logging.info("rmt_path \"%s\" is NOT existing" % (rmt_path))
-                        cnt_omitted += 1
-                        continue
-                    #process; fetch log from FTP site to local path
-                    conn5.get(remotepath=rmt_path, localpath=lcl_path, preserve_mtime=False)
-                    logging.info("lcl_path \"%s\" is downloaded" % (lcl_path))
-                    cnt_dl += 1
-                    if evaluation_dl_qty > 0 and evaluation_dl_qty <= cnt_dl:
-                        term_early = True
+                else:
+                    #process; fetch log from FTP site
+                    warnings.filterwarnings("ignore")
+                    cnopts = pysftp.CnOpts()
+                    cnopts.hostkeys = None
+                    with pysftp.Connection(host=host, port=22, username=username, password=password, cnopts=cnopts) as conn5:
+                        logging.debug("connection established successfully")
+                        #process; check log existence on FTP site
+                        pwd5: str = conn5.pwd
+                        logging.debug("current working directory is: %s" % (pwd5))
+                        if conn5.exists(rmt_path) is False:
+                            logging.info("rmt_path \"%s\" is NOT existing" % (rmt_path))
+                            cnt_omitted += 1
+                            continue
+                        #process; fetch log from FTP site to local path
+                        conn5.get(remotepath=rmt_path, localpath=lcl_path, preserve_mtime=False)
+                        logging.info("lcl_path \"%s\" is downloaded" % (lcl_path))
+                        cnt_dl += 1
+                        if evaluation_dl_qty > 0 and evaluation_dl_qty <= cnt_dl:
+                            term_early = True
                 logging.debug(result)
+                candidate: dict = dict()
+                candidate["timestamp"] = result["timestamp"]
+                candidate["path"] = lcl_path
+                if rmt_path_tc not in material:
+                    material[rmt_path_tc] = list()
+                material[rmt_path_tc].append(candidate)
+                cnt_exec += 1
                 if term_early is True:
                     break
-        logging.info("the executed count is %d" % (cnt))
+        logging.info("the iterated count is %d" % (cnt))
+        logging.info("the executed count is %d" % (cnt_exec))
+        logging.info("the downloaded count is %d" % (cnt_dl))
         logging.info("the omitted count is %d" % (cnt_omitted))
         logging.info("the quantity of results is %d" % (len(js4)))
 
