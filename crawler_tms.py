@@ -8,6 +8,8 @@ import requests
 import json
 import warnings
 import pysftp
+import zipfile
+import re
 
 if __name__ == "__main__":
     my_parser = argparse.ArgumentParser(description="CLI argument parsing")
@@ -169,5 +171,57 @@ if __name__ == "__main__":
         logging.info("the downloaded count is %d" % (cnt_dl))
         logging.info("the omitted count is %d" % (cnt_omitted))
         logging.info("the quantity of results is %d" % (len(js4)))
+        fn_patt6 = re.compile(r"(?!sniffer).*(\D\D\D)-[0-9]\.[0-9]*\.[0-9]*.*\.log")
+        for tc in material:
+            for idx, candidate in enumerate(material[tc]):
+                tmp_dir: str = os.path.dirname(candidate["path"])
+                tmp_fn: str = ""
+                if zipfile.is_zipfile(candidate["path"]):
+                    logging.debug("Archive format is %s; %s" % ("zip", candidate["path"]))
+                    with zipfile.ZipFile(candidate["path"], "r") as archive:
+                        allfiles = archive.namelist()
+                        selected = [f for f in allfiles if fn_patt6.match(f)]
+                        for fn in selected:
+                            archive.extract(member=fn, path=tmp_dir)
+                            tmp_fn = tmp_dir + os.path.sep + fn
+                verdict: dict = {"core_ver": None, "elapsed": None, "result": None, "ap": list(), "sta": list()}
+                if os.path.exists(tmp_fn) is True:
+                    with open(tmp_fn) as f:
+                        for line in f:
+                            #one time check
+                            if verdict["core_ver"] is None:
+                                matched_core_ver = re.findall(r"WiFiTestSuite Version \[(.*?)\]", line)
+                                if matched_core_ver is not None:
+                                    verdict["core_ver"] = matched_core_ver[0] if len(matched_core_ver) > 0 else None
+                            if verdict["elapsed"] is None:
+                                matched_elapsed = re.findall(r"Execution Time \[(.*?)\]", line)
+                                if matched_elapsed is not None:
+                                    verdict["elapsed"] = matched_elapsed[0] if len(matched_elapsed) > 0 else None
+                            if verdict["result"] is None:
+                                matched_result = re.findall(r"FINAL TEST RESULT\s+--->\s+(.+)", line)
+                                if matched_result is not None:
+                                    verdict["result"] = matched_result[0] if len(matched_result) > 0 else None
+                            #multiple time check
+                            capi_patt6: str = re.compile(r".*--->.*_set_security")
+                            if re.search(capi_patt6, line) is not None:
+                                matched_ap_name = re.findall(r"INFO - (.*?) \(.*\)\s+--->\s+ap_set_security", line)
+                                if matched_ap_name is not None and len(matched_ap_name) > 0:
+                                    ap_name = matched_ap_name[0] if matched_ap_name[0] != "DUT" else None
+                                    if ap_name not in verdict["ap"] and ap_name is not None:
+                                        verdict["ap"].append(ap_name)
+                                        continue
+                                matched_sta_name = re.findall(r"INFO - (.*?) \(.*\)\s+--->\s+sta_set_security", line)
+                                if matched_sta_name is not None and len(matched_sta_name) > 0:
+                                    sta_name = matched_sta_name[0] if matched_sta_name[0] != "DUT" else None
+                                    if sta_name not in verdict["sta"] and sta_name is not None:
+                                        verdict["sta"].append(sta_name)
+                                        continue
+                logging.debug(repr(verdict))
+                material[tc][idx]["ap"] = verdict["ap"]
+                material[tc][idx]["sta"] = verdict["sta"]
+        logging.debug(repr(material))
+        for tc in material:
+            for idx, candidate in enumerate(material[tc]):
+                print("%s, %s, %s, %s" % (tc, candidate["timestamp"], repr(candidate["ap"]), repr(candidate["sta"])))
 
 #Crawler6 - by Leo Liu
