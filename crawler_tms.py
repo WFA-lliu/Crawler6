@@ -10,6 +10,8 @@ import warnings
 import pysftp
 import zipfile
 import re
+import codecs
+import xmltodict
 
 if __name__ == "__main__":
     my_parser = argparse.ArgumentParser(description="CLI argument parsing")
@@ -56,6 +58,12 @@ if __name__ == "__main__":
         default="",
         type=str,
         help="The path of testbed naming file (i.e DisplayNames.txt)")
+    my_parser.add_argument("-m",
+        "--permute",
+        metavar="permute",
+        default="",
+        type=str,
+        help="The path of testbed permutation file (i.e MasterTestInfo.xml)")
 
     args = my_parser.parse_args()
     if args.verbose == True :
@@ -66,7 +74,7 @@ if __name__ == "__main__":
 
     naming: dict = {"ap": dict(), "sta": dict()}
     if os.path.exists(args.naming) is True:
-        with open(args.naming) as f:
+        with codecs.open(args.naming, "r", encoding = "utf-8", errors = "ignore") as f:
             for line in f:
                 n = line.strip().split("!")
                 if len(n) == (3 + 1):
@@ -79,6 +87,21 @@ if __name__ == "__main__":
                         naming["sta"][n[2]] = matched_name_sta[0]
                         continue
     logging.debug(repr(naming))
+
+    DELI_PERMUTE = ","
+    permutation: dict = dict()
+    if os.path.exists(args.permute) is True:
+        with codecs.open(args.permute, "r", encoding = "utf-8", errors = "ignore") as f:
+            m = xmltodict.parse(f.read())
+            for prog in m:
+                for tc in m[prog]:
+                    if tc not in permutation:
+                        permutation[tc] = {"ap": list(), "sta": list()}
+                        if "AP" in m[prog][tc] and m[prog][tc]["AP"].isdigit() == False:
+                            permutation[tc]["ap"] = m[prog][tc]["AP"].split(DELI_PERMUTE)
+                        if "STA" in m[prog][tc] and m[prog][tc]["STA"].isdigit() == False:
+                            permutation[tc]["sta"] = m[prog][tc]["STA"].split(DELI_PERMUTE)
+    logging.debug(repr(permutation))
 
     material: dict = dict()
     rst_expected: str = "Pass"
@@ -214,7 +237,7 @@ if __name__ == "__main__":
                             ucc_log_path = tmp_dir + os.path.sep + archive.getinfo(fn).filename
                 verdict: dict = {"core_ver": None, "elapsed": None, "result": None, "ap": list(), "sta": list()}
                 if os.path.exists(ucc_log_path) is True:
-                    with open(ucc_log_path) as f:
+                    with codecs.open(ucc_log_path, "r", encoding = "utf-8", errors = "ignore") as f:
                         for line in f:
                             #one time check
                             if verdict["core_ver"] is None:
@@ -253,7 +276,11 @@ if __name__ == "__main__":
         DELI_INNER: str = ","
         DELI_ENCLOSED_LHS: str = "["
         DELI_ENCLOSED_RHS: str = "]"
+        DELI_MISMATCHED: str = "*"
+        DELI_PERMUTED: str = "M"
+        DELI_UNPERMUTED: str = ""
         for tc in material:
+            permuted: bool = True if tc in permutation else False
             for idx, candidate in enumerate(material[tc]):
                 rst: str = result["result"] + DELI_OUTER
                 rst += tc + DELI_OUTER
@@ -263,7 +290,16 @@ if __name__ == "__main__":
                 for i,c in enumerate(candidate["ap"]):
                     if i > 0:
                         ap += DELI_INNER
-                    ap += naming["ap"][c] if ("ap" in naming and c in naming["ap"]) else c
+                    a: str = c
+                    if ("ap" in naming and c in naming["ap"]):
+                        a = naming["ap"][c]
+                    if permuted is True:
+                        if (len(candidate["ap"]) == len(permutation[tc]["ap"])) and (i < len(permutation[tc]["ap"])) and (a == permutation[tc]["ap"][i]):
+                            ap += a
+                        else:
+                            ap += a + DELI_MISMATCHED
+                    else:
+                        ap += a
                 ap += DELI_ENCLOSED_RHS
                 rst += ap + DELI_OUTER
                 sta: str = ""
@@ -271,9 +307,19 @@ if __name__ == "__main__":
                 for i,c in enumerate(candidate["sta"]):
                     if i > 0:
                         sta += DELI_INNER
-                    sta += naming["sta"][c] if ("sta" in naming and c in naming["sta"]) else c
+                    s: str = c
+                    if ("sta" in naming and c in naming["sta"]):
+                        s = naming["sta"][c]
+                    if permuted is True:
+                        if (len(candidate["sta"]) == len(permutation[tc]["sta"])) and (i < len(permutation[tc]["sta"])) and (s == permutation[tc]["sta"][i]):
+                            sta += s
+                        else:
+                            sta += s + DELI_MISMATCHED
+                    else:
+                        sta += s
                 sta += DELI_ENCLOSED_RHS
                 rst += sta + DELI_OUTER
+                rst += DELI_PERMUTED if permuted is True else DELI_UNPERMUTED
                 print("%s" % (rst))
 
 #Crawler6 - by Leo Liu
