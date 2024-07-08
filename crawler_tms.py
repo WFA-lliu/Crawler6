@@ -177,6 +177,10 @@ if __name__ == "__main__":
                     logging.debug("the tc with ts \"%s\" is old enough to be omitted" %(result["timestamp"]))
                     cnt_omitted += 1
                     continue
+                if (len(permutation) > 0) and (result["testCaseIdName"] not in permutation):
+                    logging.debug("the tc %s is not in permutation (table)" %(result["testCaseIdName"]))
+                    cnt_omitted += 1
+                    continue
                 lcl_dir: str = cached_directory + os.path.sep + rmt_path_dir
                 if os.path.exists(lcl_dir) is False:
                     os.makedirs(lcl_dir, mode = 0o777, exist_ok = True)
@@ -235,6 +239,8 @@ if __name__ == "__main__":
                             archive.getinfo(fn).filename = tmp_fn + "-" + fn
                             archive.extract(member=fn, path=tmp_dir)
                             ucc_log_path = tmp_dir + os.path.sep + archive.getinfo(fn).filename
+                else:
+                    logging.info("the file %s is not a zipfile (or broken)" %(candidate["path"]))
                 verdict: dict = {"core_ver": None, "elapsed": None, "result": None, "ap": list(), "sta": list()}
                 if os.path.exists(ucc_log_path) is True:
                     with codecs.open(ucc_log_path, "r", encoding = "utf-8", errors = "ignore") as f:
@@ -267,6 +273,8 @@ if __name__ == "__main__":
                                     if sta_name not in verdict["sta"] and sta_name is not None:
                                         verdict["sta"].append(sta_name)
                                         continue
+                else:
+                    logging.info("there is no UCC log in zipfile %s" %(candidate["path"]))
                 logging.debug(repr(verdict))
                 material[tc][idx]["ap"] = verdict["ap"]
                 material[tc][idx]["sta"] = verdict["sta"]
