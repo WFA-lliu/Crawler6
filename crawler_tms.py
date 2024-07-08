@@ -225,10 +225,12 @@ if __name__ == "__main__":
                             logging.info("the tc with ts \"%s\" is NOT the latest and it should be excluded" % (c["timestamp"]))
                             material[rmt_path_tc].pop(i)
                             cnt_omitted += 1
+                            cnt_exec -= 1
                             break
                         else:
                             logging.info("the tc with ts \"%s\" is NOT the latest and it should NOT be kept" % (candidate["timestamp"]))
                             cnt_omitted += 1
+                            cnt_exec -= 1
                             append = False
                 if append is True:
                     logging.debug("the tc with ts \"%s\" is going to be executed (%d)" % (candidate["timestamp"], len(material[rmt_path_tc])))
