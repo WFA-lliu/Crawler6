@@ -52,6 +52,10 @@ if __name__ == "__main__":
         default="",
         type=str,
         help="Since the specified timestamp (in milliseconds)")
+    my_parser.add_argument("-l",
+        "--latest",
+        action="store_true",
+        help="Latest one only")
     my_parser.add_argument("-n",
         "--naming",
         metavar="naming",
@@ -174,11 +178,11 @@ if __name__ == "__main__":
                     cnt_omitted += 1
                     continue
                 if (len(args.since) > 0) and (int(args.since) > int(result["timestamp"])):
-                    logging.debug("the tc with ts \"%s\" is old enough to be omitted" %(result["timestamp"]))
+                    logging.debug("the tc with ts \"%s\" is old enough to be omitted" % (result["timestamp"]))
                     cnt_omitted += 1
                     continue
                 if (len(permutation) > 0) and (result["testCaseIdName"] not in permutation):
-                    logging.debug("the tc %s is not in permutation (table)" %(result["testCaseIdName"]))
+                    logging.debug("the tc %s is NOT in permutation (table)" % (result["testCaseIdName"]))
                     cnt_omitted += 1
                     continue
                 lcl_dir: str = cached_directory + os.path.sep + rmt_path_dir
@@ -214,7 +218,21 @@ if __name__ == "__main__":
                 candidate["path"] = lcl_path
                 if rmt_path_tc not in material:
                     material[rmt_path_tc] = list()
-                material[rmt_path_tc].append(candidate)
+                append: bool = True
+                if args.latest is True:
+                    for i,c in enumerate(material[rmt_path_tc]):
+                        if (int(candidate["timestamp"]) > int(c["timestamp"])):
+                            logging.info("the tc with ts \"%s\" is NOT the latest and it should be excluded" % (c["timestamp"]))
+                            material[rmt_path_tc].pop(i)
+                            cnt_omitted += 1
+                            break
+                        else:
+                            logging.info("the tc with ts \"%s\" is NOT the latest and it should NOT be kept" % (candidate["timestamp"]))
+                            cnt_omitted += 1
+                            append = False
+                if append is True:
+                    logging.debug("the tc with ts \"%s\" is going to be executed (%d)" % (candidate["timestamp"], len(material[rmt_path_tc])))
+                    material[rmt_path_tc].append(candidate)
                 cnt_exec += 1
                 if term_early is True:
                     break
@@ -240,7 +258,7 @@ if __name__ == "__main__":
                             archive.extract(member=fn, path=tmp_dir)
                             ucc_log_path = tmp_dir + os.path.sep + archive.getinfo(fn).filename
                 else:
-                    logging.info("the file %s is not a zipfile (or broken)" %(candidate["path"]))
+                    logging.info("the file %s is NOT a zipfile (or broken)" % (candidate["path"]))
                 verdict: dict = {"core_ver": None, "elapsed": None, "result": None, "ap": list(), "sta": list()}
                 if os.path.exists(ucc_log_path) is True:
                     with codecs.open(ucc_log_path, "r", encoding = "utf-8", errors = "ignore") as f:
