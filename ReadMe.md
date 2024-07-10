@@ -34,7 +34,10 @@ Note: **pysftp** and **xmltodict** packages should be installed (before running)
 ## Description:
 
 A utility (tool) to reprocess the report of WFA TMS service.
+
 TMS is a web service with corresponding user interface; end-user could verify the report for specific event on the web page, download the actual UCC log (Zip archive), and dive into the UCC log for knowing what testbeds are used. The web page is a matrix styled representation for device-under-test and primary testbed pair.
+
 Current representation of TMS could not fulfill for the test case required more than one/primary testbeds; such representation could not know whether the testbed permutation is matching with the profile specific files (i.e. _DisplayNames.txt_ & _MasterTestInfo.xml_), too. Besides, the user interface is not friendly enough for bulk logs downloading.
+
 This utility is designed to automatically reprocess the raw report of TMS API output, download each pass logs via SFTP, and compare/match the profile specific files, then, a reprocessed report with the testbed permutation could be generated accordingly.
 

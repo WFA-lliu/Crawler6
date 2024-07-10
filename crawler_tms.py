@@ -12,6 +12,8 @@ import zipfile
 import re
 import codecs
 import xmltodict
+import time
+from datetime import timedelta
 
 if __name__ == "__main__":
     my_parser = argparse.ArgumentParser(description="CLI argument parsing")
@@ -115,6 +117,7 @@ if __name__ == "__main__":
     cnt_exec: int = 0
     evaluation_dl_qty: int = 0
     term_early: bool = False
+    ftp_fetching: bool = True
     cache_cover: bool = False
     cache_category: bool = False
     cached_directory: str = "tmp"
@@ -193,22 +196,46 @@ if __name__ == "__main__":
                 if os.path.exists(lcl_path) is True:
                     logging.info("lcl_path \"%s\" is existing" % (lcl_path))
                 else:
-                    #process; fetch log from FTP site
-                    warnings.filterwarnings("ignore")
-                    cnopts = pysftp.CnOpts()
-                    cnopts.hostkeys = None
-                    with pysftp.Connection(host=host, port=22, username=username, password=password, cnopts=cnopts) as conn5:
-                        logging.debug("connection established successfully")
-                        #process; check log existence on FTP site
-                        pwd5: str = conn5.pwd
-                        logging.debug("current working directory is: %s" % (pwd5))
-                        if conn5.exists(rmt_path) is False:
-                            logging.info("rmt_path \"%s\" is NOT existing" % (rmt_path))
+                    if ftp_fetching is True:
+                        #process; fetch log from FTP site
+                        warnings.filterwarnings("ignore")
+                        cnopts = pysftp.CnOpts()
+                        cnopts.hostkeys = None
+                        with pysftp.Connection(host=host, port=22, username=username, password=password, cnopts=cnopts) as conn5:
+                            logging.debug("connection established successfully")
+                            #process; check log existence on FTP site
+                            pwd5: str = conn5.pwd
+                            logging.debug("current working directory is: %s" % (pwd5))
+                            if conn5.exists(rmt_path) is False:
+                                logging.info("rmt_path \"%s\" is NOT existing" % (rmt_path))
+                                cnt_omitted += 1
+                                continue
+                            #process; fetch log from FTP site to local path
+                            time_begin = time.time()
+                            conn5.get(remotepath=rmt_path, localpath=lcl_path, preserve_mtime=False)
+                            time_end = time.time()
+                            time_diff = time_end - time_begin
+                            logging.info("lcl_path \"%s\" is downloaded (within %d seconds)" % (lcl_path, timedelta(seconds=time_diff).total_seconds()))
+                            cnt_dl += 1
+                            if evaluation_dl_qty > 0 and evaluation_dl_qty <= cnt_dl:
+                                term_early = True
+                    else:
+                        #process; fetch log from web site
+                        url: str = INDIVIDUAL + "homePath=" + js3["ftpUserName"] + "&" + "uri=" + result["logFileName"]
+                        logging.info("url is \"%s\"" % (url))
+                        #process; check log existence on web site
+                        time_begin = time.time()
+                        rsp5 = s.get(url, headers=h3)
+                        if rsp5.status_code == 200:
+                            with open(lcl_path, "wb") as f5:
+                                f5.write(rsp5.content)
+                            time_end = time.time()
+                            time_diff = time_end - time_begin
+                            logging.info("lcl_path \"%s\" is downloaded (within %d seconds)" % (lcl_path, timedelta(seconds=time_diff).total_seconds()))
+                        else:
+                            logging.info("lcl_path \"%s\" is unable to be downloaded" % (lcl_path))
                             cnt_omitted += 1
                             continue
-                        #process; fetch log from FTP site to local path
-                        conn5.get(remotepath=rmt_path, localpath=lcl_path, preserve_mtime=False)
-                        logging.info("lcl_path \"%s\" is downloaded" % (lcl_path))
                         cnt_dl += 1
                         if evaluation_dl_qty > 0 and evaluation_dl_qty <= cnt_dl:
                             term_early = True
