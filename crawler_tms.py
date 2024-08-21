@@ -70,6 +70,13 @@ if __name__ == "__main__":
         default="",
         type=str,
         help="The path of testbed permutation file (i.e MasterTestInfo.xml)")
+    my_parser.add_argument("-r",
+        "--result",
+        metavar="result",
+        default="Pass",
+        choices=["Fail", "Pass"],
+        type=str,
+        help="the expected result")
 
     args = my_parser.parse_args()
     if args.verbose == True :
@@ -110,7 +117,7 @@ if __name__ == "__main__":
     logging.debug(repr(permutation))
 
     material: dict = dict()
-    rst_expected: str = "Pass"
+    rst_expected: str = args.result
     cnt: int = 0
     cnt_dl: int = 0
     cnt_omitted: int = 0
