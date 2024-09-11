@@ -295,7 +295,7 @@ if __name__ == "__main__":
                             ucc_log_path = tmp_dir + os.path.sep + archive.getinfo(fn).filename
                 else:
                     logging.info("the file %s is NOT a zipfile (or broken)" % (candidate["path"]))
-                verdict: dict = {"core_ver": None, "elapsed": None, "result": None, "ap": list(), "sta": list()}
+                verdict: dict = {"core_ver": None, "elapsed": None, "result": None, "dut": None, "ap": list(), "sta": list()}
                 if os.path.exists(ucc_log_path) is True:
                     with codecs.open(ucc_log_path, "r", encoding = "utf-8", errors = "ignore") as f:
                         for line in f:
@@ -312,6 +312,10 @@ if __name__ == "__main__":
                                 matched_result = re.findall(r"FINAL TEST RESULT\s+--->\s+(.+)", line)
                                 if matched_result is not None:
                                     verdict["result"] = matched_result[0] if len(matched_result) > 0 else None
+                            if verdict["dut"] is None:
+                                matched_result = re.findall(r"INFO - DUT \(.*\)\s+<--\s+status,(.+),vendor,(.+),model,(.+),version,(.+)", line)
+                                if matched_result is not None and len(matched_result) > 0 and len(matched_result[0]) > 0:
+                                    verdict["dut"] = matched_result[0][1]
                             #multiple time check
                             capi_patt6: str = re.compile(r".*--->.*_set_security")
                             if re.search(capi_patt6, line) is not None:
@@ -332,6 +336,7 @@ if __name__ == "__main__":
                 logging.debug(repr(verdict))
                 material[tc][idx]["ap"] = verdict["ap"]
                 material[tc][idx]["sta"] = verdict["sta"]
+                material[tc][idx]["dut"] = verdict["dut"]
                 material[tc][idx]["elapsed"] = verdict["elapsed"]
         logging.debug(repr(material))
         #finalize; output report
@@ -349,6 +354,7 @@ if __name__ == "__main__":
                 rst += tc + DELI_OUTER
                 rst += ("%d" % (candidate["timestamp"])) + DELI_OUTER
                 rst += ("%s" % (candidate["elapsed"])) + DELI_OUTER
+                rst += ("%s" % (candidate["dut"])) + DELI_OUTER
                 ap: str = ""
                 ap += DELI_ENCLOSED_LHS
                 for i,c in enumerate(candidate["ap"]):
