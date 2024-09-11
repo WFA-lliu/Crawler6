@@ -332,6 +332,7 @@ if __name__ == "__main__":
                 logging.debug(repr(verdict))
                 material[tc][idx]["ap"] = verdict["ap"]
                 material[tc][idx]["sta"] = verdict["sta"]
+                material[tc][idx]["elapsed"] = verdict["elapsed"]
         logging.debug(repr(material))
         #finalize; output report
         DELI_OUTER: str = "; "
@@ -347,6 +348,7 @@ if __name__ == "__main__":
                 rst: str = result["result"] + DELI_OUTER
                 rst += tc + DELI_OUTER
                 rst += ("%d" % (candidate["timestamp"])) + DELI_OUTER
+                rst += ("%s" % (candidate["elapsed"])) + DELI_OUTER
                 ap: str = ""
                 ap += DELI_ENCLOSED_LHS
                 for i,c in enumerate(candidate["ap"]):

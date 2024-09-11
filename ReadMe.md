@@ -4,7 +4,7 @@
 ## Usage:
 
 ```sh
-usage: crawler_tms.py [-h] [-v] -e event -a account -p password [-x prefix] [-s since] [-l] [-n naming] [-m permute]
+usage: crawler_tms.py [-h] [-v] -e event -a account -p password [-x prefix] [-s since] [-l] [-n naming] [-m permute] [-r result]
 
 CLI argument parsing
 
@@ -26,6 +26,8 @@ options:
                         The path of testbed naming file (i.e DisplayNames.txt)
   -m permute, --permute permute
                         The path of testbed permutation file (i.e MasterTestInfo.xml)
+  -r result, --result result
+                        the expected result
 ```
 
 Note: **pysftp** and **xmltodict** packages should be installed (before running).
