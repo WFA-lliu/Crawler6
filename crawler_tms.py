@@ -327,19 +327,35 @@ if __name__ == "__main__":
                                 if matched_result is not None:
                                     verdict["result"] = matched_result[0] if len(matched_result) > 0 else None
                             if verdict["dut"] is None:
-                                matched_result = re.findall(r"INFO - DUT \(.*\)\s+<--\s+status,(.+),vendor,(.+),model,(.+),version,(.+)", line)
-                                if matched_result is not None and len(matched_result) > 0 and len(matched_result[0]) > 0:
-                                    verdict["dut"] = matched_result[0][1]
+                                capi_patt5: str = re.compile(r"DUT \(.*\)\s+<--\s+status,(.+),vendor,(.+),model,(.+),version,(.+)")
+                                if re.search(capi_patt5, line) is not None:
+                                    capi_patt5d: str = r"INFO - DUT \(.*\)\s+<--\s+status,(.+),vendor,(.+),model,(.+),version,(.+)"
+                                    capi_patt5p: str = r"INFO - parallel.* DUT \(.*\)\s+<--\s+status,(.+),vendor,(.+),model,(.+),version,(.+)"
+                                    if re.search(capi_patt5p, line) is not None:
+                                        capi_patt5d = capi_patt5p
+                                    matched_result = re.findall(capi_patt5d, line)
+                                    if matched_result is not None and len(matched_result) > 0 and len(matched_result[0]) > 0:
+                                        verdict["dut"] = matched_result[0][1]
+                                        continue
                             #multiple time check
                             capi_patt6: str = re.compile(r".*--->.*_set_security")
                             if re.search(capi_patt6, line) is not None:
-                                matched_ap_name = re.findall(r"INFO - (.*?) \(.*\)\s+--->\s+ap_set_security", line)
+                                capi_patt6ap: str = None
+                                capi_patt6sta: str = None
+                                capi_patt6p: str = re.compile(r"parallel.*--->.*_set_security")
+                                if re.search(capi_patt6p, line) is not None:
+                                    capi_patt6ap: str = r"INFO - parallel.* (.*?) \(.*\)\s+--->\s+ap_set_security"
+                                    capi_patt6sta: str = r"INFO - parallel.*  (.*?) \(.*\)\s+--->\s+sta_set_security"
+                                else:
+                                    capi_patt6ap: str = r"INFO - (.*?) \(.*\)\s+--->\s+ap_set_security"
+                                    capi_patt6sta: str = r"INFO - (.*?) \(.*\)\s+--->\s+sta_set_security"
+                                matched_ap_name = re.findall(capi_patt6ap, line)
                                 if matched_ap_name is not None and len(matched_ap_name) > 0:
                                     ap_name = matched_ap_name[0] if matched_ap_name[0] != "DUT" else None
                                     if ap_name not in verdict["ap"] and ap_name is not None:
                                         verdict["ap"].append(ap_name)
                                         continue
-                                matched_sta_name = re.findall(r"INFO - (.*?) \(.*\)\s+--->\s+sta_set_security", line)
+                                matched_sta_name = re.findall(capi_patt6sta, line)
                                 if matched_sta_name is not None and len(matched_sta_name) > 0:
                                     sta_name = matched_sta_name[0] if matched_sta_name[0] != "DUT" else None
                                     if sta_name not in verdict["sta"] and sta_name is not None:
