@@ -58,6 +58,13 @@ if __name__ == "__main__":
         "--latest",
         action="store_true",
         help="Latest one only")
+    my_parser.add_argument("-y",
+        "--category",
+        metavar="category",
+        default="all",
+        choices=["all", "first", "last"],
+        type=str,
+        help="category of log")
     my_parser.add_argument("-n",
         "--naming",
         metavar="naming",
@@ -280,6 +287,7 @@ if __name__ == "__main__":
         #process; retrieve testbed names from the UCC log
         fn_patt6 = re.compile(r"(?!sniffer).*(\D\D\D)-[0-9]\.[0-9]*\.[0-9]*.*\.log")
         for tc in material:
+            kept: bool = True
             for idx, candidate in enumerate(material[tc]):
                 tmp_dir: str = os.path.dirname(candidate["path"])
                 tmp_fn: str = os.path.basename(candidate["path"])
@@ -333,11 +341,46 @@ if __name__ == "__main__":
                                         continue
                 else:
                     logging.info("there is no UCC log in zipfile %s" %(candidate["path"]))
-                logging.debug(repr(verdict))
-                material[tc][idx]["ap"] = verdict["ap"]
-                material[tc][idx]["sta"] = verdict["sta"]
-                material[tc][idx]["dut"] = verdict["dut"]
-                material[tc][idx]["elapsed"] = verdict["elapsed"]
+                    kept = False
+                if kept is False:
+                    material[tc].pop(idx)
+                    logging.info("the candidate with index %d is excluded" %(idx))
+                else:
+                    material[tc][idx]["ap"] = verdict["ap"]
+                    material[tc][idx]["sta"] = verdict["sta"]
+                    material[tc][idx]["dut"] = verdict["dut"]
+                    material[tc][idx]["elapsed"] = verdict["elapsed"]
+                    logging.info("the candidate with index %d is included" %(idx))
+            logging.debug(repr(material))
+            if (args.category == "first") or (args.category == "last"):
+                remedied: set = set()
+                for idx, candidate in enumerate(material[tc]):
+                    for i, c in enumerate(material[tc]):
+                        if i == idx:
+                            continue
+                        if "dut" in c and c["dut"] == candidate["dut"]:
+                            if ("ap" not in c) or ("sta" not in c) or ("timestamp" not in c):
+                                logging.info("parameter is missing")
+                                continue
+                            elif (c["ap"] != candidate["ap"]) or (c["sta"] != candidate["sta"]):
+                                logging.info("permutation is different")
+                                continue
+                            else:
+                                if (args.category == "last"):
+                                    if (int(c["timestamp"]) >= int(candidate["timestamp"])):
+                                        logging.info("the timestamp of candidate %d is not \"greater than or equal to\" existing" % (idx))
+                                        remedied.add(idx)
+                                        continue
+                                elif (args.category == "first"):
+                                    if (int(c["timestamp"]) < int(candidate["timestamp"])):
+                                        logging.info("the timestamp of candidate %d is not \"less than\" existing" % (idx))
+                                        remedied.add(idx)
+                                        continue
+                                else:
+                                    pass
+                if len(remedied) > 0:
+                    for r in remedied:
+                        material[tc].pop(r)
         logging.debug(repr(material))
         #finalize; output report
         DELI_OUTER: str = "; "
