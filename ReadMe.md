@@ -4,7 +4,7 @@
 ## Usage:
 
 ```sh
-usage: crawler_tms.py [-h] [-v] -e event -a account -p password [-x prefix] [-s since] [-l] [-n naming] [-m permute] [-r result]
+usage: crawler_tms.py [-h] [-v] -e event -a account -p password [-x prefix] [-s since] [-l] [-y category] [-n naming] [-m permute] [-r result] [-d directory]
 
 CLI argument parsing
 
@@ -22,12 +22,16 @@ options:
   -s since, --since since
                         Since the specified timestamp (in milliseconds)
   -l, --latest          Latest one only
+  -y category, --category category
+                        category of log
   -n naming, --naming naming
                         The path of testbed naming file (i.e DisplayNames.txt)
   -m permute, --permute permute
                         The path of testbed permutation file (i.e MasterTestInfo.xml)
   -r result, --result result
                         the expected result
+  -d directory, --directory directory
+                        directory of UCC log and capture
 ```
 
 Note: **pysftp** and **xmltodict** packages should be installed (before running).

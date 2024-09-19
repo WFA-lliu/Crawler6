@@ -84,6 +84,12 @@ if __name__ == "__main__":
         choices=["Fail", "Pass"],
         type=str,
         help="the expected result")
+    my_parser.add_argument("-d",
+        "--directory",
+        metavar="directory",
+        default="tmp",
+        type=str,
+        help="directory of UCC log and capture")
 
     args = my_parser.parse_args()
     if args.verbose == True :
@@ -134,7 +140,7 @@ if __name__ == "__main__":
     ftp_fetching: bool = True
     cache_cover: bool = False
     cache_category: bool = False
-    cached_directory: str = "tmp"
+    cached_directory: str = args.directory
     cached_cover: str = cached_directory + os.path.sep + "cover.txt"
     cached_category: str = cached_directory + os.path.sep + "category.txt"
     PORTAL: str = "https://tms.wi-fi.org/"
