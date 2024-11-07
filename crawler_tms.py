@@ -90,6 +90,18 @@ if __name__ == "__main__":
         default="tmp",
         type=str,
         help="directory of UCC log and capture")
+    my_parser.add_argument(
+        "--sftp-usr",
+        metavar="sftp_usr",
+        default=None,
+        type=str,
+        help="alternative SFTP username")
+    my_parser.add_argument(
+        "--sftp-pwd",
+        metavar="sftp_pwd",
+        default=None,
+        type=str,
+        help="alternative SFTP password")
 
     args = my_parser.parse_args()
     if args.verbose == True :
@@ -183,8 +195,8 @@ if __name__ == "__main__":
             logging.debug("timestamp is %s" %(result["timestamp"]))
             logging.debug("log file name is %s" %(result["logFileName"]))
             if result["result"] == rst_expected:
-                username: str = os.path.basename(js3["ftpUserName"])
-                password: str = js3["password"]
+                username: str = os.path.basename(js3["ftpUserName"]) if args.sftp_usr is None else args.sftp_usr
+                password: str = js3["password"] if args.sftp_pwd is None else args.sftp_pwd
                 path_full: str = result["logFileName"]
                 host: str = path_full.lstrip("ftp://").split("/")[0]
                 logging.debug("host is %s" % (host))
