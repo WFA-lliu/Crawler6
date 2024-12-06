@@ -427,7 +427,7 @@ if __name__ == "__main__":
         for tc in material:
             permuted: bool = True if tc in permutation else False
             for idx, candidate in enumerate(material[tc]):
-                rst: str = result["result"] + DELI_OUTER
+                rst: str = rst_expected + DELI_OUTER
                 rst += tc + DELI_OUTER
                 rst += ("%d" % (candidate["timestamp"])) + DELI_OUTER
                 rst += ("%s" % (candidate["elapsed"])) + DELI_OUTER
