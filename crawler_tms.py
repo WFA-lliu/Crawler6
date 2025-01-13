@@ -135,9 +135,9 @@ if __name__ == "__main__":
                 for tc in m[prog]:
                     if tc not in permutation:
                         permutation[tc] = {"ap": list(), "sta": list()}
-                        if "AP" in m[prog][tc] and m[prog][tc]["AP"].isdigit() == False:
+                        if "AP" in m[prog][tc] and m[prog][tc]["AP"] is not None and m[prog][tc]["AP"].isdigit() == False:
                             permutation[tc]["ap"] = m[prog][tc]["AP"].split(DELI_PERMUTE)
-                        if "STA" in m[prog][tc] and m[prog][tc]["STA"].isdigit() == False:
+                        if "STA" in m[prog][tc] and m[prog][tc]["STA"] is not None and m[prog][tc]["STA"].isdigit() == False:
                             permutation[tc]["sta"] = m[prog][tc]["STA"].split(DELI_PERMUTE)
     logging.debug(repr(permutation))
 
