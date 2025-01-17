@@ -303,7 +303,7 @@ if __name__ == "__main__":
         logging.info("the omitted count is %d" % (cnt_omitted))
         logging.info("the quantity of results is %d" % (len(js4)))
         #process; retrieve testbed names from the UCC log
-        fn_patt6 = re.compile(r"(?!sniffer).*(\D\D\D)-[0-9]\.[0-9]*\.[0-9]*.*\.log")
+        fn_patt6 = re.compile(r"(?!sniffer).*(\D\D\D)-[0-9]+\.[0-9]*\.*[0-9]*.*\.log")
         for tc in material:
             kept: bool = True
             for idx, candidate in enumerate(material[tc]):
@@ -430,40 +430,42 @@ if __name__ == "__main__":
                 rst: str = rst_expected + DELI_OUTER
                 rst += tc + DELI_OUTER
                 rst += ("%d" % (candidate["timestamp"])) + DELI_OUTER
-                rst += ("%s" % (candidate["elapsed"])) + DELI_OUTER
-                rst += ("%s" % (candidate["dut"])) + DELI_OUTER
+                rst += ("%s" % (candidate["elapsed"] if "elapsed" in candidate else "")) + DELI_OUTER
+                rst += ("%s" % (candidate["dut"] if "dut" in candidate else "")) + DELI_OUTER
                 ap: str = ""
                 ap += DELI_ENCLOSED_LHS
-                for i,c in enumerate(candidate["ap"]):
-                    if i > 0:
-                        ap += DELI_INNER
-                    a: str = c
-                    if ("ap" in naming and c in naming["ap"]):
-                        a = naming["ap"][c]
-                    if permuted is True:
-                        if (len(candidate["ap"]) == len(permutation[tc]["ap"])) and (i < len(permutation[tc]["ap"])) and (a == permutation[tc]["ap"][i]):
-                            ap += a
+                if "ap" in candidate:
+                    for i,c in enumerate(candidate["ap"]):
+                        if i > 0:
+                            ap += DELI_INNER
+                        a: str = c
+                        if ("ap" in naming and c in naming["ap"]):
+                            a = naming["ap"][c]
+                        if permuted is True:
+                            if (len(candidate["ap"]) == len(permutation[tc]["ap"])) and (i < len(permutation[tc]["ap"])) and (a == permutation[tc]["ap"][i]):
+                                ap += a
+                            else:
+                                ap += a + DELI_MISMATCHED
                         else:
-                            ap += a + DELI_MISMATCHED
-                    else:
-                        ap += a
+                            ap += a
                 ap += DELI_ENCLOSED_RHS
                 rst += ap + DELI_OUTER
                 sta: str = ""
                 sta += DELI_ENCLOSED_LHS
-                for i,c in enumerate(candidate["sta"]):
-                    if i > 0:
-                        sta += DELI_INNER
-                    s: str = c
-                    if ("sta" in naming and c in naming["sta"]):
-                        s = naming["sta"][c]
-                    if permuted is True:
-                        if (len(candidate["sta"]) == len(permutation[tc]["sta"])) and (i < len(permutation[tc]["sta"])) and (s == permutation[tc]["sta"][i]):
-                            sta += s
+                if "sta" in candidate:
+                    for i,c in enumerate(candidate["sta"]):
+                        if i > 0:
+                            sta += DELI_INNER
+                        s: str = c
+                        if ("sta" in naming and c in naming["sta"]):
+                            s = naming["sta"][c]
+                        if permuted is True:
+                            if (len(candidate["sta"]) == len(permutation[tc]["sta"])) and (i < len(permutation[tc]["sta"])) and (s == permutation[tc]["sta"][i]):
+                                sta += s
+                            else:
+                                sta += s + DELI_MISMATCHED
                         else:
-                            sta += s + DELI_MISMATCHED
-                    else:
-                        sta += s
+                            sta += s
                 sta += DELI_ENCLOSED_RHS
                 rst += sta + DELI_OUTER
                 rst += DELI_PERMUTED if permuted is True else DELI_UNPERMUTED
