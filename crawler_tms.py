@@ -17,7 +17,7 @@ from datetime import timedelta
 
 class MaterialProvider():
     @staticmethod
-    def getNaming(fn: str = "") -> str:
+    def getNaming(fn: str = "") -> dict:
         naming: dict = {"ap": dict(), "sta": dict()}
         if os.path.exists(fn) is True:
             with codecs.open(fn, "r", encoding = "utf-8", errors = "ignore") as f:
@@ -36,7 +36,7 @@ class MaterialProvider():
         return naming
 
     @staticmethod
-    def getPermutation(fn: str = "") -> str:
+    def getPermutation(fn: str = "") -> dict:
         DELI_PERMUTE = ","
         permutation: dict = dict()
         if os.path.exists(fn) is True:
@@ -73,6 +73,7 @@ class TmsCrawler(MaterialProvider):
         since: str = kwargs["since"]
         prefix: str = kwargs["prefix"]
         latest: str = kwargs["latest"]
+        permutation: str = kwargs["permutation"]
         cnt: int = 0
         cnt_dl: int = 0
         cnt_omitted: int = 0
@@ -235,6 +236,36 @@ class TmsCrawler(MaterialProvider):
             logging.info(repr(material))
         return material
 
+class LfsCrawler(MaterialProvider):
+    @staticmethod
+    def getMaterial(**kwargs) -> dict:
+        material: dict = dict()
+        directory: str = kwargs["directory"]
+        permutation: str = kwargs["permutation"]
+        prefix: str = kwargs["prefix"]
+        # iterate through the specified directory
+        for root, dirs, files in os.walk(directory, topdown = False):
+            for name in files:
+                tc: str = os.path.basename(root)
+                if tc.startswith(prefix) is False:
+                    logging.info("tc \"%s\" is omitted" %(tc))
+                    continue
+                if tc not in permutation:
+                    logging.info("tc \"%s\" is unrecognized" %(tc))
+                    continue
+                lcl_path: str = root + os.path.sep + name
+                if zipfile.is_zipfile(lcl_path):
+                    logging.debug("Archive format is %s; %s" % ("zip", lcl_path))
+                    if tc not in material:
+                        material[tc] = list()
+                    candidate: dict = dict()
+                    candidate["timestamp"] = int(-1)
+                    candidate["path"] = lcl_path
+                    material[tc].append(candidate)
+        logging.info(repr(material))
+        return material
+
+
 class MaterialDecorator():
     @staticmethod
     def decorate(**kwargs) -> dict:
@@ -332,6 +363,8 @@ class UccLogParser(MaterialDecorator):
                     material[tc][idx]["sta"] = verdict["sta"]
                     material[tc][idx]["dut"] = verdict["dut"]
                     material[tc][idx]["elapsed"] = verdict["elapsed"]
+                    if verdict["result"] is not None:
+                        material[tc][idx]["result"] = verdict["result"]
                     logging.info("the candidate with index %d is included" %(idx))
             logging.debug(repr(material))
             if (category == "first") or (category == "last"):
@@ -392,7 +425,7 @@ class ReportFormatter(MaterialSerializer):
         for tc in material:
             permuted: bool = True if tc in permutation else False
             for idx, candidate in enumerate(material[tc]):
-                rst: str = rst_expected + DELI_OUTER
+                rst: str = (candidate["result"] if "result" in candidate else rst_expected) + DELI_OUTER
                 rst += tc + DELI_OUTER
                 rst += ("%d" % (candidate["timestamp"])) + DELI_OUTER
                 rst += ("%s" % (candidate["elapsed"] if "elapsed" in candidate else "")) + DELI_OUTER
@@ -553,7 +586,10 @@ if __name__ == "__main__":
             latest = args.latest,
             permutation = permutation)
     else:
-        pass
+        material = LfsCrawler.getMaterial(directory = args.directory,
+            rst_expected = args.result,
+            prefix = args.prefix,
+            permutation = permutation)
 
     #process; retrieve testbed names from the UCC log
     decorated: dict = UccLogParser.decorate(material = material,
