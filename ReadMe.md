@@ -5,7 +5,7 @@
 
 ```sh
 usage: crawler_tms.py [-h] [-v] [-e event] [-a account] [-p password] [-x prefix] [-s since] [-l] [-y category] [-n naming] [-m permute] [-r result] [-d directory] [--sftp-usr sftp_usr]
-                      [--sftp-pwd sftp_pwd] [-o]
+                      [--sftp-pwd sftp_pwd] [-o] [--sorted-output]
 
 CLI argument parsing
 
@@ -36,6 +36,7 @@ options:
   --sftp-usr sftp_usr   alternative SFTP username
   --sftp-pwd sftp_pwd   alternative SFTP password
   -o, --offline         offline
+  --sorted-output       sorted output
 ```
 
 Note: **pysftp** and **xmltodict** packages should be installed (before running).

@@ -15,6 +15,7 @@ import xmltodict
 import time
 from datetime import datetime
 from datetime import timedelta
+from collections import OrderedDict
 
 class MaterialProvider():
     @staticmethod
@@ -607,6 +608,10 @@ if __name__ == "__main__":
         "--offline",
         action="store_true",
         help="offline")
+    my_parser.add_argument(
+        "--sorted-output",
+        action="store_true",
+        help="sorted output")
 
     args = my_parser.parse_args()
     if args.verbose == True :
@@ -651,8 +656,14 @@ if __name__ == "__main__":
         use_timestamp_from_log = args.offline,
         category = args.category)
 
+    sorted_decorated: dict = None
+    if args.sorted_output == False:
+        sorted_decorated = decorated
+    else:
+        sorted_decorated = OrderedDict(sorted(decorated.items()))
+
     #finalize; output report
-    rst: str = ReportFormatter.serialize(material = decorated,
+    rst: str = ReportFormatter.serialize(material = sorted_decorated,
         naming = naming,
         permutation = permutation,
         rst_expected = args.result,
