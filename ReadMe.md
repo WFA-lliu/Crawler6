@@ -4,7 +4,8 @@
 ## Usage:
 
 ```sh
-usage: crawler_tms.py [-h] [-v] -e event -a account -p password [-x prefix] [-s since] [-l] [-y category] [-n naming] [-m permute] [-r result] [-d directory]
+usage: crawler_tms.py [-h] [-v] [-e event] [-a account] [-p password] [-x prefix] [-s since] [-l] [-y category] [-n naming] [-m permute] [-r result] [-d directory] [--sftp-usr sftp_usr]
+                      [--sftp-pwd sftp_pwd] [-o]
 
 CLI argument parsing
 
@@ -12,16 +13,16 @@ options:
   -h, --help            show this help message and exit
   -v, --verbose         verbosity
   -e event, --event event
-                        Event number
+                        Event number; mandatory input for TMS
   -a account, --account account
-                        Account
+                        Account; mandatory input for TMS
   -p password, --password password
-                        Password
+                        Password; mandatory input for TMS
   -x prefix, --prefix prefix
                         Permitted prefix of test case
   -s since, --since since
-                        Since the specified timestamp (in milliseconds)
-  -l, --latest          Latest one only
+                        Since the specified timestamp (in milliseconds); an option for TMS
+  -l, --latest          Latest one only; an option for TMS
   -y category, --category category
                         category of log
   -n naming, --naming naming
@@ -32,6 +33,9 @@ options:
                         the expected result
   -d directory, --directory directory
                         directory of UCC log and capture
+  --sftp-usr sftp_usr   alternative SFTP username
+  --sftp-pwd sftp_pwd   alternative SFTP password
+  -o, --offline         offline
 ```
 
 Note: **pysftp** and **xmltodict** packages should be installed (before running).

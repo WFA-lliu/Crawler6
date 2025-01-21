@@ -13,6 +13,7 @@ import re
 import codecs
 import xmltodict
 import time
+from datetime import datetime
 from datetime import timedelta
 
 class MaterialProvider():
@@ -279,9 +280,20 @@ class UccLogParser(MaterialDecorator):
         return UccLogParser.parse(**kwargs)
 
     @staticmethod
+    def getDatetime(ts: str = None) -> datetime:
+        logging.debug("ts = " + ts)
+        fmt: str = "%Y-%m-%d %H:%M:%S"
+        dt: datetime = None
+        try:
+            dt = datetime.strptime(ts, fmt)
+        except:
+            pass
+        return dt
+
+    @staticmethod
     def parse(**kwargs) -> dict:
         material: str = kwargs["material"]
-        category: str = kwargs["category"]
+        use_timestamp_from_log: bool = kwargs["use_timestamp_from_log"]
         fn_patt6 = re.compile(r"(?!sniffer).*(\D\D\D)-[0-9]+\.[0-9]*\.*[0-9]*.*\.log")
         for tc in material:
             kept: bool = True
@@ -300,7 +312,7 @@ class UccLogParser(MaterialDecorator):
                             ucc_log_path = tmp_dir + os.path.sep + archive.getinfo(fn).filename
                 else:
                     logging.info("the file %s is NOT a zipfile (or broken)" % (candidate["path"]))
-                verdict: dict = {"core_ver": None, "elapsed": None, "result": None, "dut": None, "ap": list(), "sta": list()}
+                verdict: dict = {"core_ver": None, "begin": None, "elapsed": None, "result": None, "dut": None, "ap": list(), "sta": list()}
                 if os.path.exists(ucc_log_path) is True:
                     with codecs.open(ucc_log_path, "r", encoding = "utf-8", errors = "ignore") as f:
                         for line in f:
@@ -309,6 +321,10 @@ class UccLogParser(MaterialDecorator):
                                 matched_core_ver = re.findall(r"WiFiTestSuite Version \[(.*?)\]", line)
                                 if matched_core_ver is not None:
                                     verdict["core_ver"] = matched_core_ver[0] if len(matched_core_ver) > 0 else None
+                            if verdict["begin"] is None:
+                                matched_begin = re.findall(r"Test Start Time\s+\:\s+(.*)", line)
+                                if matched_begin is not None:
+                                    verdict["begin"] = matched_begin[0] if len(matched_begin) > 0 else None
                             if verdict["elapsed"] is None:
                                 matched_elapsed = re.findall(r"Execution Time \[(.*?)\]", line)
                                 if matched_elapsed is not None:
@@ -365,9 +381,42 @@ class UccLogParser(MaterialDecorator):
                     material[tc][idx]["elapsed"] = verdict["elapsed"]
                     if verdict["result"] is not None:
                         material[tc][idx]["result"] = verdict["result"]
+                    if verdict["begin"] is not None:
+                        material[tc][idx]["begin"] = verdict["begin"]
+                        if use_timestamp_from_log is True:
+                            dt: datetime = UccLogParser.getDatetime(verdict["begin"])
+                            material[tc][idx]["timestamp"] = int(dt.timestamp())
                     logging.info("the candidate with index %d is included" %(idx))
-            logging.debug(repr(material))
-            if (category == "first") or (category == "last"):
+
+        logging.debug(repr(material))
+        return material
+
+class UccLogResultFiltrator(MaterialDecorator):
+    @staticmethod
+    def decorate(**kwargs) -> dict:
+        material: str = kwargs["material"]
+        rst_expected: str = kwargs["rst_expected"]
+        for tc in material:
+            remedied: set = set()
+            for idx, candidate in enumerate(material[tc]):
+                if ("result" not in candidate) or (candidate["result"].lower() != rst_expected.lower()):
+                    logging.info("the result of candidate %d is different from expected" % (idx))
+                    remedied.add(idx)
+                else:
+                    pass
+            if len(remedied) > 0:
+                for r in reversed(sorted(remedied)):
+                    material[tc].pop(r)
+        logging.debug(repr(material))
+        return material
+
+class UccLogTimestampFiltrator(MaterialDecorator):
+    @staticmethod
+    def decorate(**kwargs) -> dict:
+        material: str = kwargs["material"]
+        category: str = kwargs["category"]
+        if (category == "first") or (category == "last"):
+            for tc in material:
                 remedied: set = set()
                 for idx, candidate in enumerate(material[tc]):
                     for i, c in enumerate(material[tc]):
@@ -394,7 +443,7 @@ class UccLogParser(MaterialDecorator):
                                 else:
                                     pass
                 if len(remedied) > 0:
-                    for r in remedied:
+                    for r in reversed(sorted(remedied)):
                         material[tc].pop(r)
         logging.debug(repr(material))
         return material
@@ -481,22 +530,19 @@ if __name__ == "__main__":
         metavar="event",
         default="",
         type=str,
-        help="Event number",
-        required=True)
+        help="Event number; mandatory input for TMS")
     my_parser.add_argument("-a",
         "--account",
         metavar="account",
         default="",
         type=str,
-        help="Account",
-        required=True)
+        help="Account; mandatory input for TMS")
     my_parser.add_argument("-p",
         "--password",
         metavar="password",
         default="",
         type=str,
-        help="Password",
-        required=True)
+        help="Password; mandatory input for TMS")
     my_parser.add_argument("-x",
         "--prefix",
         metavar="prefix",
@@ -508,11 +554,11 @@ if __name__ == "__main__":
         metavar="since",
         default="",
         type=str,
-        help="Since the specified timestamp (in milliseconds)")
+        help="Since the specified timestamp (in milliseconds); an option for TMS")
     my_parser.add_argument("-l",
         "--latest",
         action="store_true",
-        help="Latest one only")
+        help="Latest one only; an option for TMS")
     my_parser.add_argument("-y",
         "--category",
         metavar="category",
@@ -587,12 +633,22 @@ if __name__ == "__main__":
             permutation = permutation)
     else:
         material = LfsCrawler.getMaterial(directory = args.directory,
-            rst_expected = args.result,
             prefix = args.prefix,
             permutation = permutation)
 
     #process; retrieve testbed names from the UCC log
-    decorated: dict = UccLogParser.decorate(material = material,
+    parsed: dict = UccLogParser.decorate(material = material,
+        use_timestamp_from_log = args.offline)
+
+    filtrated: dict = dict()
+    if args.offline is False:
+        filtrated = parsed
+    else:
+        filtrated = UccLogResultFiltrator.decorate(material = parsed,
+            rst_expected = args.result)
+
+    decorated: dict = UccLogTimestampFiltrator.decorate(material = filtrated,
+        use_timestamp_from_log = args.offline,
         category = args.category)
 
     #finalize; output report
