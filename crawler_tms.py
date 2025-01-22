@@ -325,7 +325,7 @@ class UccLogParser(MaterialDecorator):
                             if verdict["begin"] is None:
                                 matched_begin = re.findall(r"Test Start Time\s+\:\s+(.*)", line)
                                 if matched_begin is not None:
-                                    verdict["begin"] = matched_begin[0] if len(matched_begin) > 0 else None
+                                    verdict["begin"] = matched_begin[0].strip() if len(matched_begin) > 0 else None
                             if verdict["elapsed"] is None:
                                 matched_elapsed = re.findall(r"Execution Time \[(.*?)\]", line)
                                 if matched_elapsed is not None:
@@ -333,7 +333,7 @@ class UccLogParser(MaterialDecorator):
                             if verdict["result"] is None:
                                 matched_result = re.findall(r"FINAL TEST RESULT\s+--->\s+(.+)", line)
                                 if matched_result is not None:
-                                    verdict["result"] = matched_result[0] if len(matched_result) > 0 else None
+                                    verdict["result"] = matched_result[0].strip() if len(matched_result) > 0 else None
                             if verdict["dut"] is None:
                                 capi_patt5: str = re.compile(r"DUT \(.*\)\s+<--\s+status,(.+),vendor,(.+),model,(.+),version,(.+)")
                                 if re.search(capi_patt5, line) is not None:
