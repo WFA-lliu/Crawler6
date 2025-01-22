@@ -76,6 +76,7 @@ class TmsCrawler(MaterialProvider):
         prefix: str = kwargs["prefix"]
         latest: str = kwargs["latest"]
         permutation: str = kwargs["permutation"]
+        dut: str = kwargs["dut"]
         cnt: int = 0
         cnt_dl: int = 0
         cnt_omitted: int = 0
@@ -151,6 +152,10 @@ class TmsCrawler(MaterialProvider):
                         continue
                     if (len(permutation) > 0) and (result["testCaseIdName"] not in permutation):
                         logging.debug("the tc %s is NOT in permutation (table)" % (result["testCaseIdName"]))
+                        cnt_omitted += 1
+                        continue
+                    if (dut is not None) and (dut != result["dUTDevice"]["vendorDeviceId"]):
+                        logging.debug("the DUT %s is NOT expected" % (result["dUTDevice"]["vendorDeviceId"]))
                         cnt_omitted += 1
                         continue
                     lcl_dir: str = cached_directory + os.path.sep + rmt_path_dir
@@ -609,6 +614,12 @@ if __name__ == "__main__":
         action="store_true",
         help="offline")
     my_parser.add_argument(
+        "--dut",
+        metavar="dut",
+        default=None,
+        type=str,
+        help="DUT canonical name of TMS")
+    my_parser.add_argument(
         "--sorted-output",
         action="store_true",
         help="sorted output")
@@ -635,7 +646,8 @@ if __name__ == "__main__":
             since = args.since,
             prefix = args.prefix,
             latest = args.latest,
-            permutation = permutation)
+            permutation = permutation,
+            dut = args.dut)
     else:
         material = LfsCrawler.getMaterial(directory = args.directory,
             prefix = args.prefix,
