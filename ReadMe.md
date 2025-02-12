@@ -5,7 +5,7 @@
 
 ```sh
 usage: crawler_tms.py [-h] [-v] [-e event] [-a account] [-p password] [-x prefix] [-s since] [-l] [-y category] [-n naming] [-m permute] [-r result] [-d directory] [--sftp-usr sftp_usr]
-                      [--sftp-pwd sftp_pwd] [-o] [--sorted-output]
+                      [--sftp-pwd sftp_pwd] [--sftp-interm-dir sftp_interm_dir] [-o] [--dut dut] [--sorted-output]
 
 CLI argument parsing
 
@@ -35,7 +35,10 @@ options:
                         directory of UCC log and capture
   --sftp-usr sftp_usr   alternative SFTP username
   --sftp-pwd sftp_pwd   alternative SFTP password
+  --sftp-interm-dir sftp_interm_dir
+                        SFTP intermediate directory; be prepended before the event name
   -o, --offline         offline
+  --dut dut             DUT canonical name of TMS
   --sorted-output       sorted output
 ```
 

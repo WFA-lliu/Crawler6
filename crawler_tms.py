@@ -72,6 +72,7 @@ class TmsCrawler(MaterialProvider):
         password: str = kwargs["password"]
         sftp_usr: str = kwargs["sftp_usr"]
         sftp_pwd: str = kwargs["sftp_pwd"]
+        sftp_interm_dir: str = kwargs["sftp_interm_dir"]
         since: str = kwargs["since"]
         prefix: str = kwargs["prefix"]
         latest: str = kwargs["latest"]
@@ -136,6 +137,9 @@ class TmsCrawler(MaterialProvider):
                     logging.debug("host is %s" % (host))
                     rmt_path: str = path_full.lstrip("ftp://").lstrip(host).lstrip("/")
                     logging.debug("rmt_path is \"%s\"" % (rmt_path))
+                    if sftp_interm_dir is not None:
+                        rmt_path = sftp_interm_dir + ("/" if sftp_interm_dir.endswith("/") is False else "") + rmt_path
+                        logging.info("rmt_path is altered as \"%s\"" % (rmt_path))
                     rmt_path_dir: str = os.path.dirname(rmt_path)
                     logging.debug("rmt_path_dir is \"%s\"" % (rmt_path_dir))
                     rmt_path_fn: str = os.path.basename(rmt_path)
@@ -609,6 +613,12 @@ if __name__ == "__main__":
         default=None,
         type=str,
         help="alternative SFTP password")
+    my_parser.add_argument(
+        "--sftp-interm-dir",
+        metavar="sftp_interm_dir",
+        default=None,
+        type=str,
+        help="SFTP intermediate directory; be prepended before the event name")
     my_parser.add_argument("-o",
         "--offline",
         action="store_true",
@@ -643,6 +653,7 @@ if __name__ == "__main__":
             password = args.password,
             sftp_usr = args.sftp_usr,
             sftp_pwd = args.sftp_pwd,
+            sftp_interm_dir = args.sftp_interm_dir,
             since = args.since,
             prefix = args.prefix,
             latest = args.latest,
