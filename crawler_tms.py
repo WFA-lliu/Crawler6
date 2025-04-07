@@ -304,7 +304,7 @@ class UccLogParser(MaterialDecorator):
     def parse(**kwargs) -> dict:
         material: str = kwargs["material"]
         use_timestamp_from_log: bool = kwargs["use_timestamp_from_log"]
-        fn_patt6 = re.compile(r"(?!sniffer).*(\D\D\D)-[0-9]+\.[0-9]*\.*[0-9]*.*\.log")
+        fn_patt6 = re.compile(r"(?!sniffer).*[a-zA-Z0-9_]+-[0-9]+\.[0-9]*\.*[0-9]*.*\.log")
         for tc in material:
             kept: bool = True
             for idx, candidate in enumerate(material[tc]):
