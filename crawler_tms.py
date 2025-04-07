@@ -302,7 +302,7 @@ class UccLogParser(MaterialDecorator):
 
     @staticmethod
     def parse(**kwargs) -> dict:
-        material: str = kwargs["material"]
+        material: dict = kwargs["material"]
         use_timestamp_from_log: bool = kwargs["use_timestamp_from_log"]
         fn_patt6 = re.compile(r"(?!sniffer).*[a-zA-Z0-9_]+-[0-9]+\.[0-9]*\.*[0-9]*.*\.log")
         for tc in material:
@@ -320,6 +320,8 @@ class UccLogParser(MaterialDecorator):
                             archive.getinfo(fn).filename = tmp_fn + "-" + fn
                             archive.extract(member=fn, path=tmp_dir)
                             ucc_log_path = tmp_dir + os.path.sep + archive.getinfo(fn).filename
+                    if len(ucc_log_path) == 0:
+                        logging.warning("there is no suitable pattern in zipfile %s" %(candidate["path"]))
                 else:
                     logging.info("the file %s is NOT a zipfile (or broken)" % (candidate["path"]))
                 verdict: dict = {"core_ver": None, "begin": None, "elapsed": None, "result": None, "dut": None, "ap": list(), "sta": list()}
@@ -404,7 +406,7 @@ class UccLogParser(MaterialDecorator):
 class UccLogResultFiltrator(MaterialDecorator):
     @staticmethod
     def decorate(**kwargs) -> dict:
-        material: str = kwargs["material"]
+        material: dict = kwargs["material"]
         rst_expected: str = kwargs["rst_expected"]
         for tc in material:
             remedied: set = set()
@@ -423,7 +425,7 @@ class UccLogResultFiltrator(MaterialDecorator):
 class UccLogTimestampFiltrator(MaterialDecorator):
     @staticmethod
     def decorate(**kwargs) -> dict:
-        material: str = kwargs["material"]
+        material: dict = kwargs["material"]
         category: str = kwargs["category"]
         if (category == "first") or (category == "last"):
             for tc in material:
