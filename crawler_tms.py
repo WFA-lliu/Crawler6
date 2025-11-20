@@ -276,7 +276,6 @@ class LfsCrawler(MaterialProvider):
         logging.info(repr(material))
         return material
 
-
 class MaterialDecorator():
     @staticmethod
     def decorate(**kwargs) -> dict:
@@ -403,6 +402,24 @@ class UccLogParser(MaterialDecorator):
         logging.debug(repr(material))
         return material
 
+class TmsDirParser(MaterialDecorator):
+    @staticmethod
+    def decorate(**kwargs) -> dict:
+        return TmsDirParser.parse(**kwargs)
+
+    @staticmethod
+    def parse(**kwargs) -> dict:
+        material: dict = kwargs["material"]
+        for tc in material:
+            for idx, candidate in enumerate(material[tc]):
+                path: list = candidate["path"].split(os.path.sep)
+                dut: str = path[-4]
+                tb: str = path[-3]
+                material[tc][idx]["tms_dut"] = dut
+                material[tc][idx]["tms_tb"] = tb
+        logging.debug(repr(material))
+        return material
+
 class UccLogResultFiltrator(MaterialDecorator):
     @staticmethod
     def decorate(**kwargs) -> dict:
@@ -470,10 +487,12 @@ class MaterialSerializer():
 class ReportFormatter(MaterialSerializer):
     @staticmethod
     def serialize(**kwargs) -> str:
+        show_timestamp: bool = False
         finished: str = ""
         material = kwargs["material"]
         naming = kwargs["naming"]
         permutation = kwargs["permutation"]
+        show_device_from_log: bool = kwargs["show_device_from_log"]
         rst_expected: str = kwargs["rst_expected"]
         delimiter: str = kwargs["delimiter"]
         DELI_OUTER: str = "; "
@@ -488,46 +507,52 @@ class ReportFormatter(MaterialSerializer):
             for idx, candidate in enumerate(material[tc]):
                 rst: str = (candidate["result"] if "result" in candidate else rst_expected) + DELI_OUTER
                 rst += tc + DELI_OUTER
-                rst += ("%d" % (candidate["timestamp"])) + DELI_OUTER
+                if show_timestamp:
+                    rst += ("%d" % (candidate["timestamp"])) + DELI_OUTER
                 rst += ("%s" % (candidate["elapsed"] if "elapsed" in candidate else "")) + DELI_OUTER
-                rst += ("%s" % (candidate["dut"] if "dut" in candidate else "")) + DELI_OUTER
-                ap: str = ""
-                ap += DELI_ENCLOSED_LHS
-                if "ap" in candidate:
-                    for i,c in enumerate(candidate["ap"]):
-                        if i > 0:
-                            ap += DELI_INNER
-                        a: str = c
-                        if ("ap" in naming and c in naming["ap"]):
-                            a = naming["ap"][c]
-                        if permuted is True:
-                            if (len(candidate["ap"]) == len(permutation[tc]["ap"])) and (i < len(permutation[tc]["ap"])) and (a == permutation[tc]["ap"][i]):
+                if show_device_from_log:
+                    rst += ("%s" % (candidate["dut"] if "dut" in candidate else "")) + DELI_OUTER
+                    ap: str = ""
+                    ap += DELI_ENCLOSED_LHS
+                    if "ap" in candidate:
+                        for i,c in enumerate(candidate["ap"]):
+                            if i > 0:
+                                ap += DELI_INNER
+                            a: str = c
+                            if ("ap" in naming and c in naming["ap"]):
+                                a = naming["ap"][c]
+                            if permuted is True:
+                                if (len(candidate["ap"]) == len(permutation[tc]["ap"])) and (i < len(permutation[tc]["ap"])) and (a == permutation[tc]["ap"][i]):
+                                    ap += a
+                                else:
+                                    ap += a + DELI_MISMATCHED
+                            else:
                                 ap += a
+                    ap += DELI_ENCLOSED_RHS
+                    rst += ap + DELI_OUTER
+                    sta: str = ""
+                    sta += DELI_ENCLOSED_LHS
+                    if "sta" in candidate:
+                        for i,c in enumerate(candidate["sta"]):
+                            if i > 0:
+                                sta += DELI_INNER
+                            s: str = c
+                            if ("sta" in naming and c in naming["sta"]):
+                                s = naming["sta"][c]
+                            if permuted is True:
+                                if (len(candidate["sta"]) == len(permutation[tc]["sta"])) and (i < len(permutation[tc]["sta"])) and (s == permutation[tc]["sta"][i]):
+                                    sta += s
+                                else:
+                                    sta += s + DELI_MISMATCHED
                             else:
-                                ap += a + DELI_MISMATCHED
-                        else:
-                            ap += a
-                ap += DELI_ENCLOSED_RHS
-                rst += ap + DELI_OUTER
-                sta: str = ""
-                sta += DELI_ENCLOSED_LHS
-                if "sta" in candidate:
-                    for i,c in enumerate(candidate["sta"]):
-                        if i > 0:
-                            sta += DELI_INNER
-                        s: str = c
-                        if ("sta" in naming and c in naming["sta"]):
-                            s = naming["sta"][c]
-                        if permuted is True:
-                            if (len(candidate["sta"]) == len(permutation[tc]["sta"])) and (i < len(permutation[tc]["sta"])) and (s == permutation[tc]["sta"][i]):
                                 sta += s
-                            else:
-                                sta += s + DELI_MISMATCHED
-                        else:
-                            sta += s
-                sta += DELI_ENCLOSED_RHS
-                rst += sta + DELI_OUTER
-                rst += DELI_PERMUTED if permuted is True else DELI_UNPERMUTED
+                    sta += DELI_ENCLOSED_RHS
+                    rst += sta + DELI_OUTER
+                    rst += DELI_PERMUTED if permuted is True else DELI_UNPERMUTED
+                else:
+                    rst += ("%s" % (candidate["tms_dut"] if "tms_dut" in candidate else ""))
+                    rst += DELI_OUTER
+                    rst += ("%s" % (candidate["tms_tb"] if "tms_tb" in candidate else ""))
                 finished += (delimiter if len(finished) > 0 else "") + rst
         return finished
 
@@ -635,6 +660,10 @@ if __name__ == "__main__":
         "--sorted-output",
         action="store_true",
         help="sorted output")
+    my_parser.add_argument(
+        "--show-device-from-log",
+        action="store_true",
+        help="show device information from the parsed UCC log")
 
     args = my_parser.parse_args()
     if args.verbose == True :
@@ -666,8 +695,11 @@ if __name__ == "__main__":
             prefix = args.prefix,
             permutation = permutation)
 
+    #process; retrieve DUT and primary testbed from directory structure
+    prepended: dict = TmsDirParser.decorate(material = material)
+
     #process; retrieve testbed names from the UCC log
-    parsed: dict = UccLogParser.decorate(material = material,
+    parsed: dict = UccLogParser.decorate(material = prepended,
         use_timestamp_from_log = args.offline)
 
     filtrated: dict = dict()
@@ -691,6 +723,7 @@ if __name__ == "__main__":
     rst: str = ReportFormatter.serialize(material = sorted_decorated,
         naming = naming,
         permutation = permutation,
+        show_device_from_log = args.show_device_from_log,
         rst_expected = args.result,
         delimiter = os.linesep)
     print(rst)
