@@ -718,6 +718,9 @@ if __name__ == "__main__":
         sorted_decorated = decorated
     else:
         sorted_decorated = OrderedDict(sorted(decorated.items()))
+        for k in sorted_decorated:
+            sorted_decorated_further = sorted(sorted_decorated[k], key=lambda x: x["elapsed"], reverse=True)
+            sorted_decorated[k] = sorted_decorated_further
 
     #finalize; output report
     rst: str = ReportFormatter.serialize(material = sorted_decorated,
